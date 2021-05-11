@@ -58,8 +58,6 @@ class SpanToJaegerMapper
                 continue;
             }
 
-            $type = "";
-            $vkey = "";
             switch ($binaryAnnotationTag->annotation_type) {
                 case AnnotationType::BOOL:
                     $type = TagType::BOOL;
@@ -116,7 +114,7 @@ class SpanToJaegerMapper
 
         return new JaegerThriftSpan([
             "traceIdLow" => (int)$span->getContext()->getTraceId(),
-            "traceIdHigh" => 0,
+            "traceIdHigh" => (int)$span->getContext()->getTraceIdHigh(),
             "spanId" => (int)$span->getContext()->getSpanId(),
             "parentSpanId" => (int)$span->getContext()->getParentId(),
             "operationName" => $span->getOperationName(),

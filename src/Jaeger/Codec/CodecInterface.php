@@ -32,5 +32,5 @@ interface CodecInterface
      * @param mixed $carrier
      * @return SpanContext|null
      */
-    public function extract($carrier);
+    public function extract($carrier): ?SpanContext;
 }

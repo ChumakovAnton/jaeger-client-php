@@ -22,13 +22,34 @@ class TextCodecTest extends TestCase
 
     public function testCanInjectSimpleContextInCarrier(): void
     {
-        $context = new SpanContext('trace-id', 'span-id', null, null);
+        $context = new SpanContext(1, 2, null, null);
         $carrier = [];
 
         $this->textCodec->inject($context, $carrier);
 
-        $this->assertCount(1 , $carrier);
+        $this->assertCount(1, $carrier);
         $this->assertArrayHasKey(TRACE_ID_HEADER, $carrier);
+    }
+
+    public function testCanInjectTraceIdInt128InCarrier(): void
+    {
+        $context = new SpanContext(
+            -6522034753222342792,
+            2,
+            null,
+            null,
+            null,
+            null,
+            4155310763536564229
+        );
+
+        $carrier = [];
+
+        $this->textCodec->inject($context, $carrier);
+
+        $this->assertCount(1, $carrier);
+        $this->assertArrayHasKey(TRACE_ID_HEADER, $carrier);
+        $this->assertSame('39aaa11fa7f44005a57d13f2796e0778:2:0:0', $carrier[TRACE_ID_HEADER]);
     }
 
     /**
@@ -40,11 +61,11 @@ class TextCodecTest extends TestCase
     {
         $carrier = [];
 
-        $context = new SpanContext('trace-id', 'span-id', null, null, $baggage);
+        $context = new SpanContext(1, 2, null, null, $baggage);
         $textCodec = new TextCodec($urlEncode);
         $textCodec->inject($context, $carrier);
 
-        $this->assertCount(1 + count($baggage) , $carrier);
+        $this->assertCount(1 + count($baggage), $carrier);
         $this->assertArrayHasKey(TRACE_ID_HEADER, $carrier);
         foreach ($injectedBaggage as $key => $value) {
             $this->assertArrayHasKey(BAGGAGE_HEADER_PREFIX . $key, $carrier);
@@ -65,19 +86,21 @@ class TextCodecTest extends TestCase
      * @dataProvider carrierDataProvider
      * @param $urlEncode
      * @param $carrier
-     * @param $traceId
+     * @param $traceIdLow
+     * @param $traceIdHigh
      * @param $spanId
      * @param $parentId
      * @param $flags
      * @param $baggage
      * @throws \Exception
      */
-    public function testSpanContextParsingFromHeader($urlEncode, $carrier, $traceId, $spanId, $parentId, $flags, $baggage): void
+    public function testSpanContextParsingFromHeader($urlEncode, $carrier, $traceIdLow, $traceIdHigh, $spanId, $parentId, $flags, $baggage): void
     {
         $textCodec = new TextCodec($urlEncode);
         $spanContext = $textCodec->extract($carrier);
 
-        $this->assertEquals($traceId, $spanContext->getTraceId());
+        $this->assertEquals($traceIdLow, $spanContext->getTraceId());
+        $this->assertEquals($traceIdHigh, $spanContext->getTraceIdHigh());
         $this->assertEquals($spanId, $spanContext->getSpanId());
         $this->assertEquals($parentId, $spanContext->getParentId());
         $this->assertEquals($flags, $spanContext->getFlags());
@@ -95,7 +118,8 @@ class TextCodecTest extends TestCase
                 [
                     TRACE_ID_HEADER => '32834e4115071776:f7802330248418d:f123456789012345:1'
                 ],
-                "3639838965278119798",
+                3639838965278119798,
+                null,
                 "1114643325879075213",
                 "-1070935975401544891",
                 1,
@@ -107,7 +131,8 @@ class TextCodecTest extends TestCase
                     TRACE_ID_HEADER => '32834e4115071776:f7802330248418d:f123456789012345:1',
                     BAGGAGE_HEADER_PREFIX . 'baggage-1' => 'https://testdomain.sk',
                 ],
-                "3639838965278119798",
+                3639838965278119798,
+                null,
                 "1114643325879075213",
                 "-1070935975401544891",
                 1,
@@ -119,18 +144,31 @@ class TextCodecTest extends TestCase
                     TRACE_ID_HEADER => '32834e4115071776:f7802330248418d:f123456789012345:1',
                     BAGGAGE_HEADER_PREFIX . 'baggage-1' => 'https%3A%2F%2Ftestdomain.sk',
                 ],
-                "3639838965278119798",
+                3639838965278119798,
+                null,
                 "1114643325879075213",
                 "-1070935975401544891",
                 1,
                 ['baggage-1' => 'https://testdomain.sk']
+            ],
+            [
+                false,
+                [
+                    TRACE_ID_HEADER => '39aaa11fa7f44005a57d13f2796e0778:f7802330248418d:f123456789012345:1'
+                ],
+                -6522034753222342792,
+                4155310763536564229,
+                "1114643325879075213",
+                "-1070935975401544891",
+                1,
+                []
             ]
         ];
     }
 
     public function testBaggageWithoutTraceContext(): void
     {
-        $carrier = [BAGGAGE_HEADER_PREFIX.'test' => 'some data'];
+        $carrier = [BAGGAGE_HEADER_PREFIX . 'test' => 'some data'];
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('baggage without trace ctx');

@@ -24,13 +24,13 @@ class CodecUtility
      * On 32-bit architectures, it falls back to base_convert.
      *
      * @param string $hex
-     * @return string|int
+     * @return int
      */
-    public static function hexToInt64($hex)
+    public static function hexToInt64(string $hex): int
     {
         // If we're on a 32-bit architecture, fall back to base_convert.
         if (PHP_INT_SIZE === 4) {
-            return base_convert($hex, 16, 10);
+            return (int)hexdec($hex);
         }
 
         $hi = intval(substr($hex, -16, -8), 16);

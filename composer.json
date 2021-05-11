@@ -24,6 +24,7 @@
     ],
     "require": {
         "php": "^7.1 || ^8.0",
+        "ext-json": "*",
         "ext-sockets": "*",
         "opentracing/opentracing": "^1.0",
         "packaged/thrift": "^0.13",
@@ -51,7 +52,9 @@
         ]
     },
     "autoload-dev": {
-        "Jaeger\\Tests\\": "tests/Jaeger/"
+        "psr-4": {
+            "Jaeger\\Tests\\": "tests/Jaeger/"
+        }
     },
     "minimum-stability": "dev",
     "prefer-stable": true,

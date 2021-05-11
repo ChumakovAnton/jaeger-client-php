@@ -7,8 +7,6 @@ use Jaeger\SpanContext;
 use const Jaeger\DEBUG_FLAG;
 use const Jaeger\SAMPLED_FLAG;
 
-use function Phlib\base_convert;
-
 class ZipkinCodec implements CodecInterface
 {
     const SAMPLED_NAME = 'X-B3-Sampled';
@@ -29,7 +27,13 @@ class ZipkinCodec implements CodecInterface
      */
     public function inject(SpanContext $spanContext, &$carrier)
     {
-        $carrier[self::TRACE_ID_NAME] = dechex($spanContext->getTraceId());
+        $traceIdHex = dechex($spanContext->getTraceId());
+
+        if ($spanContext->getTraceIdHigh() !== null) {
+            $traceIdHex = sprintf('%x%016x', $spanContext->getTraceIdHigh(), $spanContext->getTraceId());
+        }
+
+        $carrier[self::TRACE_ID_NAME] = $traceIdHex;
         $carrier[self::SPAN_ID_NAME] = dechex($spanContext->getSpanId());
         if ($spanContext->getParentId() != null) {
             $carrier[self::PARENT_ID_NAME] = dechex($spanContext->getParentId());
@@ -45,11 +49,8 @@ class ZipkinCodec implements CodecInterface
      * @param mixed $carrier
      * @return SpanContext|null
      */
-    public function extract($carrier)
+    public function extract($carrier): ?SpanContext
     {
-        $traceId = "0";
-        $spanId = "0";
-        $parentId = "0";
         $flags = 0;
 
         if (isset($carrier[strtolower(self::SAMPLED_NAME)])) {
@@ -60,17 +61,11 @@ class ZipkinCodec implements CodecInterface
             }
         }
 
-        if (isset($carrier[strtolower(self::TRACE_ID_NAME)])) {
-            $traceId =  CodecUtility::hexToInt64($carrier[strtolower(self::TRACE_ID_NAME)], 16, 10);
-        }
+        $traceId = $this->getHeader($carrier, self::TRACE_ID_NAME);
 
-        if (isset($carrier[strtolower(self::PARENT_ID_NAME)])) {
-            $parentId =  CodecUtility::hexToInt64($carrier[strtolower(self::PARENT_ID_NAME)], 16, 10);
-        }
+        $parentId = $this->getHeaderAsInt64($carrier, self::PARENT_ID_NAME);
 
-        if (isset($carrier[strtolower(self::SPAN_ID_NAME)])) {
-            $spanId =  CodecUtility::hexToInt64($carrier[strtolower(self::SPAN_ID_NAME)], 16, 10);
-        }
+        $spanId = $this->getHeaderAsInt64($carrier, self::SPAN_ID_NAME);
 
         if (isset($carrier[strtolower(self::FLAGS_NAME)])) {
             if ($carrier[strtolower(self::FLAGS_NAME)] === "1") {
@@ -78,10 +73,33 @@ class ZipkinCodec implements CodecInterface
             }
         }
 
-        if ($traceId != "0" && $spanId != "0") {
-            return new SpanContext($traceId, $spanId, $parentId, $flags);
+        if (null === $traceId || null === $spanId || 0 === $spanId) {
+            return null;
         }
 
-        return null;
+        $spanContext = new SpanContext();
+
+        $spanContext->setTraceId($traceId)
+            ->setSpanId($spanId)
+            ->setParentId($parentId)
+            ->setFlags($flags);
+
+        if ($spanContext->getTraceId() === 0) {
+            return null;
+        }
+
+        return $spanContext;
+    }
+
+    private function getHeader(array $carrier, string $name): ?string
+    {
+        return $carrier[strtolower($name)] ?? null;
+    }
+
+    private function getHeaderAsInt64(array $carrier, string $name): ?int
+    {
+        $value = $this->getHeader($carrier, $name);
+
+        return $value ? CodecUtility::hexToInt64($value) : null;
     }
 }
