@@ -86,15 +86,17 @@ class TextCodec implements CodecInterface
         foreach ($carrier as $key => $value) {
             $ucKey = strtolower($key);
 
+            if (is_array($value)) {
+                $value = current($value);
+            }
+
+            if ($this->urlEncoding) {
+                $value = urldecode($value);
+            }
+
             if ($ucKey === $this->traceIdHeader) {
-                if ($this->urlEncoding) {
-                    $value = urldecode($value);
-                }
                 $traceId = $value;
             } elseif ($this->startsWith($ucKey, $this->baggagePrefix)) {
-                if ($this->urlEncoding) {
-                    $value = urldecode($value);
-                }
                 $attrKey = substr($key, $this->prefixLength);
                 if ($baggage === null) {
                     $baggage = [strtolower($attrKey) => $value];
@@ -102,9 +104,6 @@ class TextCodec implements CodecInterface
                     $baggage[strtolower($attrKey)] = $value;
                 }
             } elseif ($ucKey === $this->debugIdHeader) {
-                if ($this->urlEncoding) {
-                    $value = urldecode($value);
-                }
                 $debugId = $value;
             }
         }

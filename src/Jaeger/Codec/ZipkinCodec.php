@@ -53,11 +53,21 @@ class ZipkinCodec implements CodecInterface
     {
         $flags = 0;
 
-        if (isset($carrier[strtolower(self::SAMPLED_NAME)])) {
-            if ($carrier[strtolower(self::SAMPLED_NAME)] === "1" ||
-                strtolower($carrier[strtolower(self::SAMPLED_NAME)] === "true")
+        $sampledName = $this->getHeader($carrier, self::SAMPLED_NAME);
+
+        if (isset($sampledName)) {
+            if ($sampledName === "1" ||
+                strtolower($sampledName === "true")
             ) {
                 $flags = $flags | SAMPLED_FLAG;
+            }
+        }
+
+        $flagsName = $this->getHeader($carrier, self::FLAGS_NAME);
+
+        if (isset($flagsName)) {
+            if ($flagsName === "1") {
+                $flags = $flags | DEBUG_FLAG;
             }
         }
 
@@ -66,12 +76,6 @@ class ZipkinCodec implements CodecInterface
         $parentId = $this->getHeaderAsInt64($carrier, self::PARENT_ID_NAME);
 
         $spanId = $this->getHeaderAsInt64($carrier, self::SPAN_ID_NAME);
-
-        if (isset($carrier[strtolower(self::FLAGS_NAME)])) {
-            if ($carrier[strtolower(self::FLAGS_NAME)] === "1") {
-                $flags = $flags | DEBUG_FLAG;
-            }
-        }
 
         if (null === $traceId || null === $spanId || 0 === $spanId) {
             return null;
@@ -93,13 +97,19 @@ class ZipkinCodec implements CodecInterface
 
     private function getHeader(array $carrier, string $name): ?string
     {
-        return $carrier[strtolower($name)] ?? null;
+        $value = $carrier[strtolower($name)] ?? null;
+
+        if (is_array($value)) {
+            $value = current($value);
+        }
+
+        return $value;
     }
 
-    private function getHeaderAsInt64(array $carrier, string $name): ?int
+    private function getHeaderAsInt64(array $carrier, string $name): int
     {
         $value = $this->getHeader($carrier, $name);
 
-        return $value ? CodecUtility::hexToInt64($value) : null;
+        return $value ? CodecUtility::hexToInt64($value) : 0;
     }
 }

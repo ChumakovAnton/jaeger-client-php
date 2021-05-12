@@ -154,4 +154,28 @@ class ZipkinCodecTest extends TestCase
             4155310763536564229
         ), $spanContext);
     }
+
+    function testExtractArray()
+    {
+        // Given
+        $carrier = [
+            'x-b3-traceid' => ['39aaa11fa7f44005a57d13f2796e0778'],
+            'x-b3-spanid' => ['8d824d69da5f50d9'],
+            'x-b3-flags' => ['1'],
+        ];
+
+        // When
+        $spanContext = $this->codec->extract($carrier);
+
+        // Then
+        $this->assertEquals(new SpanContext(
+            -6522034753222342792,
+            -8249946450358742823,
+            0,
+            DEBUG_FLAG,
+            null,
+            null,
+            4155310763536564229
+        ), $spanContext);
+    }
 }
