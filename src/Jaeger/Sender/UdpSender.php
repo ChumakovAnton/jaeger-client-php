@@ -145,6 +145,7 @@ class UdpSender
                 'id' => $span->getContext()->getSpanId(),
                 'parent_id' => $span->getContext()->getParentId() ?? null,
                 'trace_id' => $span->getContext()->getTraceId(),
+                'trace_id_high' => $span->getContext()->getTraceIdHigh(),
                 'annotations' => $this->createAnnotations($span, $endpoint),
                 'binary_annotations' => $span->getTags(),
                 'debug' => $span->isDebug(),
