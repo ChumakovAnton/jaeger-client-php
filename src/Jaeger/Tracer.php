@@ -189,6 +189,7 @@ class Tracer implements OTTracer
             }
         } else {
             $traceId = $parent->getTraceId();
+            $traceIdHigh = $parent->getTraceIdHigh();
             if ($rpcServer && $this->oneSpanPerRpc) {
                 // Zipkin-style one-span-per-RPC
                 $spanId = $parent->getSpanId();
@@ -207,7 +208,9 @@ class Tracer implements OTTracer
             $spanId,
             $parentId,
             $flags,
-            $baggage
+            $baggage,
+            null,
+            $traceIdHigh ?? null
         );
 
         $span = new Span(
